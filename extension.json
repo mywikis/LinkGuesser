@@ -1,0 +1,29 @@
+{
+    "name": "LinkGuesser",
+    "version": "0.1",
+    "author": [
+        "[https://github.com/mywikis MyWikis LLC]"
+    ],
+    "license-name": "(c) MyWikis LLC",
+    "url": "https://github.com/mywikis/LinkGuesser",
+    "descriptionmsg": "linkguesser-description",
+    "type": "other",
+    "requires": {
+        "MediaWiki": ">= 1.35.0"
+    },
+    "MessagesDirs": {
+        "LinkGuesser": [
+            "i18n"
+        ]
+    },
+    "AutoloadNamespaces": {
+        "MediaWiki\\Extension\\LinkGuesser\\": "includes/"
+    },
+    "SpecialPages": {
+        "ResolveLink": "MediaWiki\\Extension\\LinkGuesser\\SpecialResolveLink"
+    },
+    "Hooks": {
+        "HtmlPageLinkRendererEnd": "StaffToolsHooks::onHtmlPageLinkRendererEnd"
+    },
+    "manifest_version": 2
+}
