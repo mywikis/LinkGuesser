@@ -15,7 +15,7 @@ use Title;
 
 class SpecialChangeLink extends SpecialPage {
 	public function __construct() {
-		parent::__construct( 'changeLink' );
+		parent::__construct( 'changeLink', 'edit' );
 	}
 
 	/**
@@ -26,6 +26,8 @@ class SpecialChangeLink extends SpecialPage {
 	public function execute(
         $sub
     ) {
+        $this->checkPermissions();
+        
 		$request = $this->getRequest();
         $performer = $this->getUser();
         $out = $this->getOutput();
