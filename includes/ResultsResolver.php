@@ -2,8 +2,10 @@
 namespace MediaWiki\Extension\LinkGuesser;
 
 use MediaWiki\MediaWikiServices;
+use ExtensionRegistry;
 use Status;
 use SearchEngine;
+use SearchEngineConfig;
 use SearchEngineFactory;
 use Title;
 
@@ -12,33 +14,24 @@ class ResultsResolver {
         Title $querySubject
     ): array {
         $services = MediaWikiServices::getInstance();
-
         $config = $services->getConfigFactory()->makeConfig( 'LinkGuesser' );
 
-        $searchEngineFactory = $services->getSearchEngineFactory();
-        $searchEngine = $searchEngineFactory->create();
+        $titleText = $querySubject->getText();
 
-        $strippedTitle = $querySubject->getText();
+        // First try: change all special characters to spaces and search
+        $strippedTitle = preg_replace('/[^A-Za-z0-9\-]/', ' ', $titleText);
 
-        // Below part shamelessly inspired by api/ApiQuerySearch.php
-        $matches = $searchEngine->searchText( 'intitle:' . $strippedTitle );
+        $matches = ResultsResolver::doSearch( "intitle:$strippedTitle" );
 
-        if ( $matches instanceof Status ) {
-            $status = $matches;
-            $matches = $status->getValue();
-        } else {
-            $status = null;
+        // Secondary tries
+        if ( $matches->count() < 1 ) {
+            // Try searching with subpage's ending
+            if ( strpos( $titleText, '/' ) !== false ) {
+                $subpageTitleParts = explode( '/', $titleText );
+                $lastPartOfTitle = end( $subpageTitleParts ); // can't put explode() call directly in here per PHP manual on end()
+                $matches = ResultsResolver::doSearch( "intitle:$lastPartOfTitle" );
+            }
         }
-
-        if ( $status ) {
-			if ( !$status->isOK() ) {
-                echo "Status not ok";
-                return []; // failure
-			}
-		} elseif ( $matches === null ) {
-            echo "Matches are null";
-			return [];
-		}
 
         $maxResultsRaw = $config->get( 'LinkGuesserResultsLimit' );
         $maxResults = is_int( $maxResultsRaw )
@@ -65,5 +58,42 @@ class ResultsResolver {
 		}
 
         return $results;
+    }
+
+    // Shamelessly inspired by api/ApiQuerySearch.php
+    private static function doSearch(
+        string $query
+    ): object {
+        $services = MediaWikiServices::getInstance();
+
+        $searchEngineConfig = new SearchEngineConfig(
+			$services->getMainConfig(),
+			$services->getContentLanguage(),
+			$services->getHookContainer(),
+			ExtensionRegistry::getInstance()->getAttribute( 'SearchMappings' )
+        );
+        $defaultNamespaces = $searchEngineConfig->defaultNamespaces();
+        $searchEngineFactory = $services->getSearchEngineFactory();
+        $searchEngine = $searchEngineFactory->create();
+        $searchEngine->setNamespaces( $defaultNamespaces );
+
+        $matches = $searchEngine->searchText( $query );
+
+        if ( $matches instanceof Status ) {
+            $status = $matches;
+            $matches = $status->getValue();
+        } else {
+            $status = null;
+        }
+
+        if ( $status ) {
+			if ( !$status->isOK() ) {
+                return []; // failure
+			}
+		} elseif ( $matches === null ) {
+			return [];
+		}
+
+        return $matches;
     }
 }

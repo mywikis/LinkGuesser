@@ -92,7 +92,7 @@ class SpecialResolveLink extends SpecialPage {
         $originalTitleText = $originalTitle->getText();
 
         $out->addHTML(
-            "<p>The page you requested, $originalTitle, doesn't exist. Are any of the below pages correct?</p>"
+            "<p>The page you requested, <b>$originalTitle</b>, doesn't exist. Are any of the below pages correct?</p>"
         );
 
         $out->addHTML(
@@ -102,20 +102,20 @@ class SpecialResolveLink extends SpecialPage {
         $resultOut = Html::openElement( 'table', [
             'class' => 'wikitable'
         ] );
-        $resultOut .= Html::openElement( 'thead' );
-        $resultOut .= Html::openElement( 'tr' );
-        $resultOut .= Html::rawElement( 'th', [], 'Page name' );
-        $resultOut .= Html::rawElement( 'th', [], 'Link to page' );
-        if ( $performer->isAllowed( 'edit' ) ) {
-            $resultOut .= Html::rawElement( 'th', [], 'Adjust the link' );
-        }
-        $resultOut .= Html::closeElement( 'tr' );
-        $resultOut .= Html::closeElement( 'thead' );
+        // $resultOut .= Html::openElement( 'thead' );
+        // $resultOut .= Html::openElement( 'tr' );
+        // $resultOut .= Html::rawElement( 'th', [], 'Page name' );
+        // $resultOut .= Html::rawElement( 'th', [], 'Go to page' );
+        // if ( $performer->isAllowed( 'edit' ) ) {
+        //     $resultOut .= Html::rawElement( 'th', [], 'Fix link' );
+        // }
+        // $resultOut .= Html::closeElement( 'tr' );
+        // $resultOut .= Html::closeElement( 'thead' );
         $resultOut .= Html::openElement( 'tbody' );
 
         if ( !empty( $results ) ) {
             foreach ( $results as $resultTitleObj ) {
-                $titleName = $resultTitleObj->getText();
+                $titleName = $resultTitleObj->getPrefixedText();
                 $localUrl = $resultTitleObj->getLocalURL();
                 $linkBtn = new OOUI\ButtonWidget( [
                     'label' => 'Go',
@@ -135,11 +135,13 @@ class SpecialResolveLink extends SpecialPage {
                         'destructive'
                     ]
                 ] );
+                $resultOut .= Html::openElement( 'tr' );
                 $resultOut .= Html::rawElement( 'td', [], $titleName );
                 $resultOut .= Html::rawElement( 'td', [], $linkBtn );
                 if ( $performer->isAllowed( 'edit' ) ) {
                     $resultOut .= Html::rawElement( 'td', [], $fixBtn );
                 }
+                $resultOut .= Html::closeElement( 'tr' );
             }
         } else {
             $resultOut .= Html::rawElement( 'td', [
@@ -157,7 +159,7 @@ class SpecialResolveLink extends SpecialPage {
         );
         // TODO: Only show this if VisualEditor is detected
         $originalUrlVeBtn = new OOUI\ButtonWidget( [
-            'label' => 'Create original page in VisualEditor',
+            'label' => 'Create requested page in VisualEditor',
             'href' => $originalTitle->getLocalURL( [
                 'veaction' => 'edit'
             ] ),
@@ -167,7 +169,7 @@ class SpecialResolveLink extends SpecialPage {
             ]
         ] );
         $originalUrlBtn = new OOUI\ButtonWidget( [
-            'label' => 'Create original page using wikitext',
+            'label' => 'Create requested page using wikitext',
             'href' => $originalTitle->getLocalURL( [
                 'action' => 'edit'
             ] ),
