@@ -1,3 +1,5 @@
 {
-    "linkguesser-description": "For broken internal links, infers possible correct links from search results."
+    "linkguesser-description": "For broken internal links, infers possible correct links from search results.",
+    "changelink": "Change link",
+    "resolvelink": "Resolve broken link"
 }

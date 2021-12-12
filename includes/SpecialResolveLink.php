@@ -8,6 +8,11 @@
 
 namespace MediaWiki\Extension\LinkGuesser;
 
+use Html;
+use OOUI;
+use SpecialPage;
+use Title;
+
 class SpecialResolveLink extends SpecialPage {
 	public function __construct() {
 		parent::__construct( 'resolveLink' );
@@ -43,12 +48,15 @@ class SpecialResolveLink extends SpecialPage {
                 'Invalid page title and/or namespace.'
             );
             return;
+        } else {
+            $originalTitle = $tryMakingTitle;
         }
 
-        $results = ResultsResolver::retrieveResults( $requestedDbKey );
+        $results = ResultsResolver::retrieveResults( $originalTitle );
         
         $this->showResults(
-            $results
+            $results,
+            $originalTitle
         );
 	}
 
@@ -60,17 +68,104 @@ class SpecialResolveLink extends SpecialPage {
         string $message
     ) {
         $output = $this->getOutput();
-        $output->wrapWikiMsg(
-            "<div class=\"errorbox\"><p>$message</p></div>"
+        $output->enableOOUI();
+        $output->addHTML(
+            new OOUI\MessageWidget( [
+                'type' => 'error',
+                'label' => $message
+            ] )
         );
     }
 
     private function showResults(
-        array $results
+        array $results,
+        Title $originalTitle
     ) {
         $out = $this->getOutput();
-
         $out->enableOOUI();
+
+        // No validation on $originalTitle needed, because it's already been done before it was
+        // passed into showResults()
+        $originalTitleText = $originalTitle->getText();
+
+        $out->addHTML(
+            "<p>The page you requested, $originalTitle, doesn't exist. Are any of the below pages correct?</p>"
+        );
+
+        $out->addHTML(
+            Html::rawElement( 'h3', [], 'Possible matches' )
+        );
+
+        $resultOut = Html::openElement( 'table', [
+            'class' => 'wikitable'
+        ] );
+        $resultOut .= Html::openElement( 'thead' );
+        $resultOut .= Html::openElement( 'tr' );
+        $resultOut .= Html::rawElement( 'th', [], 'Page name' );
+        $resultOut .= Html::rawElement( 'th', [], 'Link to page' );
+        $resultOut .= Html::rawElement( 'th', [], 'Adjust the link' );
+        $resultOut .= Html::closeElement( 'tr' );
+        $resultOut .= Html::closeElement( 'thead' );
+        $resultOut .= Html::openElement( 'tbody' );
+
+        if ( !empty( $results ) ) {
+            foreach ( $results as $resultTitleObj ) {
+                $titleName = $resultTitleObj->getText();
+                $localUrl = $resultTitleObj->getLocalURL();
+                $linkBtn = new OOUI\ButtonWidget( [
+                    'label' => 'Go',
+                    'href' => $localUrl,
+                    'flags' => [
+                        'primary',
+                        'progressive'
+                    ]
+                ] );
+                $fixBtn = new OOUI\ButtonWidget( [
+                    'label' => 'Fix link',
+                    'href' => Title::newFromText(
+                        'ChangeLink',
+                        NS_SPECIAL
+                    )->getLocalURL(),
+                    'flags' => [
+                        'destructive'
+                    ]
+                ] );
+                $resultOut .= Html::rawElement( 'td', [], $titleName );
+                $resultOut .= Html::rawElement( 'td', [], $linkBtn );
+                $resultOut .= Html::rawElement( 'td', [], $fixBtn );
+            }
+        } else {
+            $resultOut .= Html::rawElement( 'td', [
+                'colspan' => '3'
+            ], 'No matches found.' );
+        }
+
+        $resultOut .= Html::closeElement( 'tbody' );
+        $resultOut .= Html::closeElement( 'table' );
+
+        $out->addHTML( $resultOut );
+
+        $out->addHTML(
+            Html::rawElement( 'h3', [], 'Create page' )
+        );
+        // TODO: Only show this if VisualEditor is detected
+        $originalUrlVeBtn = new OOUI\ButtonWidget( [
+            'label' => 'Create original page in VisualEditor',
+            'href' => $originalTitle->getLocalURL( [
+                'veaction' => 'edit'
+            ] ),
+            'flags' => [
+                'primary',
+                'progressive'
+            ]
+        ] );
+        $originalUrlBtn = new OOUI\ButtonWidget( [
+            'label' => 'Create original page using wikitext',
+            'href' => $originalTitle->getLocalURL( [
+                'action' => 'edit'
+            ] ),
+        ] );
+        $out->addHTML( "<p>$originalUrlVeBtn $originalUrlBtn</p>" );
 
         // TODO: Display the results
         // TODO: Create links for each result to click on

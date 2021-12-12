@@ -1,6 +1,10 @@
 <?php
 namespace MediaWiki\Extension\LinkGuesser;
 
+use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\Linker\LinkTarget;
+use Title;
+
 class LinkGuesserHooks {
     public static function onHtmlPageLinkRendererEnd(
         LinkRenderer $linkRenderer,
