@@ -12,6 +12,7 @@ use Html;
 use OOUI;
 use SpecialPage;
 use Title;
+use User;
 
 class SpecialResolveLink extends SpecialPage {
 	public function __construct() {
@@ -56,7 +57,8 @@ class SpecialResolveLink extends SpecialPage {
         
         $this->showResults(
             $results,
-            $originalTitle
+            $originalTitle,
+            $performer
         );
 	}
 
@@ -79,7 +81,8 @@ class SpecialResolveLink extends SpecialPage {
 
     private function showResults(
         array $results,
-        Title $originalTitle
+        Title $originalTitle,
+        User $performer
     ) {
         $out = $this->getOutput();
         $out->enableOOUI();
@@ -103,7 +106,9 @@ class SpecialResolveLink extends SpecialPage {
         $resultOut .= Html::openElement( 'tr' );
         $resultOut .= Html::rawElement( 'th', [], 'Page name' );
         $resultOut .= Html::rawElement( 'th', [], 'Link to page' );
-        $resultOut .= Html::rawElement( 'th', [], 'Adjust the link' );
+        if ( $performer->isAllowed( 'edit' ) ) {
+            $resultOut .= Html::rawElement( 'th', [], 'Adjust the link' );
+        }
         $resultOut .= Html::closeElement( 'tr' );
         $resultOut .= Html::closeElement( 'thead' );
         $resultOut .= Html::openElement( 'tbody' );
@@ -132,7 +137,9 @@ class SpecialResolveLink extends SpecialPage {
                 ] );
                 $resultOut .= Html::rawElement( 'td', [], $titleName );
                 $resultOut .= Html::rawElement( 'td', [], $linkBtn );
-                $resultOut .= Html::rawElement( 'td', [], $fixBtn );
+                if ( $performer->isAllowed( 'edit' ) ) {
+                    $resultOut .= Html::rawElement( 'td', [], $fixBtn );
+                }
             }
         } else {
             $resultOut .= Html::rawElement( 'td', [
@@ -166,9 +173,5 @@ class SpecialResolveLink extends SpecialPage {
             ] ),
         ] );
         $out->addHTML( "<p>$originalUrlVeBtn $originalUrlBtn</p>" );
-
-        // TODO: Display the results
-        // TODO: Create links for each result to click on
-        // TODO: If performer has edit rights, allow them to correct the previous link
     }
 }
