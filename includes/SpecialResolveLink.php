@@ -8,6 +8,7 @@
 
 namespace MediaWiki\Extension\LinkGuesser;
 
+use Category;
 use Html;
 use OOUI;
 use SpecialPage;
@@ -38,19 +39,33 @@ class SpecialResolveLink extends SpecialPage {
             : $request->getText( 'pg' );
 
         // Try creating a Title object with what we are passed
-        // If result is null, this is invalid and we throw an error.
+        // If result is null or refers to another wiki, this is invalid and we
+        // throw an error. (Interwiki titles are rejected so that user-supplied
+        // input can never be turned into an off-site redirect below.)
         $tryMakingTitle = Title::newFromText(
             $requestedDbKey,
             (int) $requestedNamespaceId
         );
 
-        if ( $tryMakingTitle === null ) {
+        if ( $tryMakingTitle === null || $tryMakingTitle->isExternal() ) {
             $this->showError(
                 'Invalid page title and/or namespace.'
             );
             return;
         } else {
             $originalTitle = $tryMakingTitle;
+        }
+
+        // The link that brought the user here may have been rendered from a
+        // stale parser cache entry: the page might exist by now, or, for a
+        // category, it may have gained members since. In either case send the
+        // user straight to the page they asked for.
+        if ( $originalTitle->exists()
+            || ( $originalTitle->getNamespace() === NS_CATEGORY
+                && Category::newFromTitle( $originalTitle )->getPageCount() > 0 )
+        ) {
+            $out->redirect( $originalTitle->getFullURL() );
+            return;
         }
 
         $results = ResultsResolver::retrieveResults( $originalTitle );

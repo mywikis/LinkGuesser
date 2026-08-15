@@ -2,10 +2,8 @@
 namespace MediaWiki\Extension\LinkGuesser;
 
 use MediaWiki\MediaWikiServices;
-use ExtensionRegistry;
 use Status;
 use SearchEngine;
-use SearchEngineConfig;
 use SearchEngineFactory;
 use Title;
 
@@ -21,15 +19,21 @@ class ResultsResolver {
         // First try: change all special characters to spaces and search
         $strippedTitle = preg_replace('/[^A-Za-z0-9\-]/', ' ', $titleText);
 
-        $matches = ResultsResolver::doSearch( "intitle:$strippedTitle" );
+        $matches = ResultsResolver::doSearch(
+            "intitle:$strippedTitle",
+            $querySubject->getNamespace()
+        );
 
         // Secondary tries
-        if ( $matches->count() < 1 ) {
+        if ( count( $matches ) < 1 ) {
             // Try searching with subpage's ending
             if ( strpos( $titleText, '/' ) !== false ) {
                 $subpageTitleParts = explode( '/', $titleText );
                 $lastPartOfTitle = end( $subpageTitleParts ); // can't put explode() call directly in here per PHP manual on end()
-                $matches = ResultsResolver::doSearch( "intitle:$lastPartOfTitle" );
+                $matches = ResultsResolver::doSearch(
+                    "intitle:$lastPartOfTitle",
+                    $querySubject->getNamespace()
+                );
             }
         }
 
@@ -62,20 +66,23 @@ class ResultsResolver {
 
     // Shamelessly inspired by api/ApiQuerySearch.php
     private static function doSearch(
-        string $query
-    ): object {
+        string $query,
+        ?int $namespace = null
+    ): iterable {
         $services = MediaWikiServices::getInstance();
 
-        $searchEngineConfig = new SearchEngineConfig(
-			$services->getMainConfig(),
-			$services->getContentLanguage(),
-			$services->getHookContainer(),
-			ExtensionRegistry::getInstance()->getAttribute( 'SearchMappings' )
-        );
-        $defaultNamespaces = $searchEngineConfig->defaultNamespaces();
+        $searchEngineConfig = $services->getSearchEngineConfig();
+        $namespaces = $searchEngineConfig->defaultNamespaces();
+
+        // The requested page may live in a namespace that isn't searched by
+        // default (e.g. Category), so make sure it is always included.
+        if ( $namespace !== null && !in_array( $namespace, $namespaces, true ) ) {
+            $namespaces[] = $namespace;
+        }
+
         $searchEngineFactory = $services->getSearchEngineFactory();
         $searchEngine = $searchEngineFactory->create();
-        $searchEngine->setNamespaces( $defaultNamespaces );
+        $searchEngine->setNamespaces( $namespaces );
 
         $matches = $searchEngine->searchText( $query );
 
@@ -94,6 +101,6 @@ class ResultsResolver {
 			return [];
 		}
 
-        return $matches;
+        return $matches ?? [];
     }
 }
