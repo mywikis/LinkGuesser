@@ -39,13 +39,15 @@ class SpecialResolveLink extends SpecialPage {
             : $request->getText( 'pg' );
 
         // Try creating a Title object with what we are passed
-        // If result is null, this is invalid and we throw an error.
+        // If result is null or refers to another wiki, this is invalid and we
+        // throw an error. (Interwiki titles are rejected so that user-supplied
+        // input can never be turned into an off-site redirect below.)
         $tryMakingTitle = Title::newFromText(
             $requestedDbKey,
             (int) $requestedNamespaceId
         );
 
-        if ( $tryMakingTitle === null ) {
+        if ( $tryMakingTitle === null || $tryMakingTitle->isExternal() ) {
             $this->showError(
                 'Invalid page title and/or namespace.'
             );
