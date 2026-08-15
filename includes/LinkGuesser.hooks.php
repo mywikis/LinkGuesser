@@ -39,24 +39,29 @@ class LinkGuesserHooks {
                 $intendedTargetPageKey
             );
 
-            if ( $categoryTitle !== null ) {
-                $category = Category::newFromTitle( $categoryTitle );
+            if ( $categoryTitle !== null && self::categoryHasMembers( $categoryTitle ) ) {
+                $attribs['href'] = $categoryTitle->getLinkURL();
 
-                if ( $category->getPageCount() > 0 ) {
-                    $attribs['href'] = $categoryTitle->getLinkURL();
+                // The link isn't broken from the reader's perspective, so
+                // don't style or describe it as such.
+                if ( isset( $attribs['class'] ) ) {
+                    $classes = array_diff(
+                        preg_split( '/\s+/', $attribs['class'], -1, PREG_SPLIT_NO_EMPTY ),
+                        [ 'new' ]
+                    );
 
-                    // The link isn't broken from the reader's perspective, so
-                    // don't style it as such.
-                    if ( isset( $attribs['class'] ) ) {
-                        $classes = array_diff(
-                            preg_split( '/\s+/', $attribs['class'], -1, PREG_SPLIT_NO_EMPTY ),
-                            [ 'new' ]
-                        );
+                    if ( $classes === [] ) {
+                        unset( $attribs['class'] );
+                    } else {
                         $attribs['class'] = implode( ' ', $classes );
                     }
-
-                    return true;
                 }
+
+                // LinkRenderer::makeBrokenLink() sets a "(page does not exist)"
+                // tooltip, which no longer applies.
+                $attribs['title'] = $categoryTitle->getPrefixedText();
+
+                return true;
             }
         }
 
@@ -73,5 +78,30 @@ class LinkGuesserHooks {
         );
         
         return true;
+    }
+
+    /**
+     * Whether a category has pages categorized under it.
+     *
+     * Results are memoized per request, because this hook can be called many
+     * times for the same category (e.g. on Special:WantedCategories) and each
+     * Category object issues its own uncached database query.
+     *
+     * @param Title $categoryTitle
+     * @return bool
+     */
+    private static function categoryHasMembers(
+        Title $categoryTitle
+    ): bool {
+        static $cache = [];
+
+        $key = $categoryTitle->getDBkey();
+
+        if ( !array_key_exists( $key, $cache ) ) {
+            $category = Category::newFromTitle( $categoryTitle );
+            $cache[$key] = $category->getPageCount() > 0;
+        }
+
+        return $cache[$key];
     }
 }

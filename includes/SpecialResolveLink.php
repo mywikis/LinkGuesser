@@ -8,6 +8,7 @@
 
 namespace MediaWiki\Extension\LinkGuesser;
 
+use Category;
 use Html;
 use OOUI;
 use SpecialPage;
@@ -51,6 +52,18 @@ class SpecialResolveLink extends SpecialPage {
             return;
         } else {
             $originalTitle = $tryMakingTitle;
+        }
+
+        // The link that brought the user here may have been rendered from a
+        // stale parser cache entry: the page might exist by now, or, for a
+        // category, it may have gained members since. In either case send the
+        // user straight to the page they asked for.
+        if ( $originalTitle->exists()
+            || ( $originalTitle->getNamespace() === NS_CATEGORY
+                && Category::newFromTitle( $originalTitle )->getPageCount() > 0 )
+        ) {
+            $out->redirect( $originalTitle->getFullURL() );
+            return;
         }
 
         $results = ResultsResolver::retrieveResults( $originalTitle );
